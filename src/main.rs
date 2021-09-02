@@ -1,8 +1,7 @@
-use std::cmp::{Eq, PartialEq};
+use std::cmp::{PartialEq};
 use std::collections::HashMap;
 use std::fmt;
-use std::fmt::Debug;
-use std::fmt::Display;
+
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
@@ -29,9 +28,7 @@ pub trait CommonBehaviour {
     fn eq(&self, other: &Self) -> bool;
 }
 
-pub trait UserSpecificBehaviour: CommonBehaviour + UserBehaviour {}
 
-// impl
 
 impl UserBehaviour for User {
     fn new(id: i64, name: String, email: String, gender: String, dob: String) -> Self {
@@ -105,6 +102,8 @@ fn main() {
     path_list.push(user_data_path);
 
     let mut path_name : String = String::new();
+    let item_mapper : HashMap<i64, Item>;
+    let user_mapper : HashMap<i64, User>;
     
     
     //Creating a loop to store all files in memory
@@ -122,8 +121,14 @@ fn main() {
                 print!("Reading file :: {}\n", path_name);
                 print!("Strings read from file :: {} :: is {}\n", path_name, datasize);
                 let lines: Vec<&str> = line_splitter(&mut s, "\n");
+                if path_name.contains("item_data") {
+                    item_mapper = create_items(&lines);
+                }
+                else if path_name.contains("user_data") {
+                    user_mapper = create_users(&lines);
+                }
 
-                let mut item_mapper: HashMap<i64, User> = HashMap::with_capacity(lines.len());
+                
             }
             Err(why) => panic!("couldn't read {}: {}", path_name, why),
         }
@@ -140,86 +145,86 @@ fn line_splitter<'a>(data: &'a mut String, split_char: &'a str) -> Vec<&'a str> 
     return data.split(split_char).collect();
 }
 
-fn convertToPojo<T: CommonBehaviour>(lines: &Vec<&str>, objectType: PojoType) -> Result<HashMap<i64, T>,String> {
-    let mut itemMapper: HashMap<i64, Item>;
-    let mut userMapper: HashMap<i64,User>;
-    match objectType {
-        PojoType::Item => {
-            //if pojo type is item return a hashmap with key as id and value as Item object
-            itemMapper = createItems(lines);
-            return Ok(itemMapper);
-        }
-        PojoType::User => {
-            //if pojo type is user return a hashmap with key as id and value as User object
-            userMapper = createUsers(lines);
-            return userMapper;
-        }
-        _ => return Err("Data cannot be found".to_string()),
-    }
+// fn convertToPojo<T: CommonBehaviour>(lines: &Vec<&str>, objectType: PojoType) -> Result<HashMap<i64, T>,String> {
+//     let mut itemMapper: HashMap<i64, Item>;
+//     let mut userMapper: HashMap<i64,User>;
+//     match objectType {
+//         PojoType::Item => {
+//             //if pojo type is item return a hashmap with key as id and value as Item object
+//             itemMapper = createItems(lines);
+//             return Ok(itemMapper);
+//         }
+//         PojoType::User => {
+//             //if pojo type is user return a hashmap with key as id and value as User object
+//             userMapper = createUsers(lines);
+//             return userMapper;
+//         }
+//         _ => return Err("Data cannot be found".to_string()),
+//     }
 
-}
+// }
 
-fn createItems(lines: &Vec<&str>) -> HashMap<i64, Item> {
-    let columnSplitter: &str = ",";
-    let mut itemMapper: HashMap<i64, Item> = HashMap::new();
-    let mut colValues: Vec<&str> = Vec::new();
+fn create_items(lines: &Vec<&str>) -> HashMap<i64, Item> {
+    let column_splitter: &str = ",";
+    let mut item_mapper: HashMap<i64, Item> = HashMap::new();
+    let mut col_values: Vec<&str> = Vec::new();
     let mut count: i64 = 0;
     for x in lines.iter() {
         if count == 0 {
             count += 1;
             continue;
         }
-        colValues = x.split(columnSplitter).collect();
-        let item: Item = createSingleItem(colValues);
-        itemMapper.insert(item.id, item);
+        col_values = x.split(column_splitter).collect();
+        let item: Item = create_single_item(col_values);
+        item_mapper.insert(item.id, item);
         count += 1;
     }
-    return itemMapper;
+    return item_mapper;
 }
 
-fn createUsers(lines: &Vec<&str>) -> HashMap<i64, User> {
-    let columnSplitter: &str = ",";
+fn create_users(lines: &Vec<&str>) -> HashMap<i64, User> {
+    let column_splitter: &str = ",";
     let mut user_mapper: HashMap<i64, User> = HashMap::new();
-    let mut colValues: Vec<&str> = Vec::new();
+    let mut col_values: Vec<&str> = Vec::new();
     let mut count: i64 = 0;
     for x in lines.iter() {
         if count == 0 {
             count += 1;
             continue;
         }
-        colValues = x.split(columnSplitter).collect();
-        let user: User = createSingleUser(colValues);
+        col_values = x.split(column_splitter).collect();
+        let user: User = create_single_user(col_values);
         user_mapper.insert(user.id, user);
         count += 1;
     }
     return user_mapper;
 }
 
-fn createSingleItem(columnValues: Vec<&str>) -> Item {
-    let id: i64 = columnValues[0]
+fn create_single_item(col_values: Vec<&str>) -> Item {
+    let id: i64 = col_values[0]
         .parse()
         .expect("Could not parse value into integer id");
-    let name: String = columnValues[1].to_owned();
-    let size: i64 = columnValues[2]
+    let name: String = col_values[1].to_owned();
+    let size: i64 = col_values[2]
         .parse()
         .expect("Could not parse value into integer size");
-    let price: f64 = columnValues[3]
+    let price: f64 = col_values[3]
         .parse()
         .expect("Could not parse value into double value of price");
     return Item::new(id, name, size, price);
 }
 
-fn createSingleUser(columnValues: Vec<&str>) -> User {
+fn create_single_user(column_values: Vec<&str>) -> User {
     // id: i64,
     // name: String,
     // email: String,
     // gender: String,
     // dob: String,
-    let message = fmt.format!("rror in record number :: {}", columnValues[0]);
-    let id : i64 = columnValues[0].parse().expect(message);
-    let name : String = columnValues[1].parse().expect(message);
-    let email : String = columnValues[2].parse().expect(message);
-    let gender : String = columnValues[3].parse().expect(message);
-    let dob : String = columnValues[4].parse().expect(message);
+    let message = fmt.format!("rror in record number :: {}", column_values[0]);
+    let id : i64 = column_values[0].parse().expect(message);
+    let name : String = column_values[1].parse().expect(message);
+    let email : String = column_values[2].parse().expect(message);
+    let gender : String = column_values[3].parse().expect(message);
+    let dob : String = column_values[4].parse().expect(message);
     return User::new(id,name,email,gender,dob);
 }
