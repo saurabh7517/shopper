@@ -98,47 +98,63 @@ impl CommonBehaviour for Item {
 fn main() {
     // Create a path to the desired file
     let item_data_path = Path::new("D:\\rust_projects\\shop\\item_data.csv");
-    let item_data_path = Path::new("D:\\rust_projects\\shop\\user_data.csv");
-    let display = path.display();
-    // Open the path in read-only mode, returns `io::Result<File>`
-    let mut file = match File::open(&path) {
-        Ok(file) => file,
-        Err(why) => panic!("couldn't open {}: {}", display, why),
-    };
+    let user_data_path = Path::new("D:\\rust_projects\\shop\\user_data.csv");
+    //Creating the list of source paths to pull data from
+    let mut path_list : Vec<&Path> = Vec::new();
+    path_list.push(item_data_path);
+    path_list.push(user_data_path);
 
-    // Read the file contents into a string, returns `io::Result<usize>`
-    let mut s = String::new();
-    match file.read_to_string(&mut s) {
-        Ok(datasize) => {
-            print!("Reading file :: {}\n", display);
-            print!("Strings read from file :: {} :: is {}", display, datasize);
-            let lines: Vec<&str> = line_splitter(&mut s, "\n");
+    let mut path_name : String = String::new();
+    
+    
+    //Creating a loop to store all files in memory
+    for path in path_list.iter(){        
+        path_name = path.display().to_string();
+        let mut file = match File::open(&path) {
+            Ok(file) => file,
+            Err(why) => panic!("couldn't open {}: {}", path_name, why),
+        };
 
-            let mut item_mapper: HashMap<i64, User> = HashMap::with_capacity(lines.len());
+         // Read the file contents into a string, returns `io::Result<usize>`
+        let mut s = String::new();
+        match file.read_to_string(&mut s) {
+            Ok(datasize) => {
+                print!("Reading file :: {}\n", path_name);
+                print!("Strings read from file :: {} :: is {}\n", path_name, datasize);
+                let lines: Vec<&str> = line_splitter(&mut s, "\n");
+
+                let mut item_mapper: HashMap<i64, User> = HashMap::with_capacity(lines.len());
+            }
+            Err(why) => panic!("couldn't read {}: {}", path_name, why),
         }
-        Err(why) => panic!("couldn't read {}: {}", display, why),
+        path_name.clear();
     }
+    let display = user_data_path.display();
+    // Open the path in read-only mode, returns `io::Result<File>`
+
+
+
 }
 
 fn line_splitter<'a>(data: &'a mut String, split_char: &'a str) -> Vec<&'a str> {
     return data.split(split_char).collect();
 }
 
-fn convertToPojo<T: CommonBehaviour>(lines: &Vec<&str>, objectType: T) -> HashMap<i64, T> {
+fn convertToPojo<T: CommonBehaviour>(lines: &Vec<&str>, objectType: PojoType) -> Result<HashMap<i64, T>,String> {
     let mut itemMapper: HashMap<i64, Item>;
     let mut userMapper: HashMap<i64,User>;
     match objectType {
         PojoType::Item => {
             //if pojo type is item return a hashmap with key as id and value as Item object
             itemMapper = createItems(lines);
-            return itemMapper;
+            return Ok(itemMapper);
         }
         PojoType::User => {
             //if pojo type is user return a hashmap with key as id and value as User object
             userMapper = createUsers(lines);
             return userMapper;
         }
-        _ => (),
+        _ => return Err("Data cannot be found".to_string()),
     }
 
 }
@@ -163,7 +179,7 @@ fn createItems(lines: &Vec<&str>) -> HashMap<i64, Item> {
 
 fn createUsers(lines: &Vec<&str>) -> HashMap<i64, User> {
     let columnSplitter: &str = ",";
-    let mut itemMapper: HashMap<i64, Item> = HashMap::new();
+    let mut user_mapper: HashMap<i64, User> = HashMap::new();
     let mut colValues: Vec<&str> = Vec::new();
     let mut count: i64 = 0;
     for x in lines.iter() {
@@ -172,11 +188,11 @@ fn createUsers(lines: &Vec<&str>) -> HashMap<i64, User> {
             continue;
         }
         colValues = x.split(columnSplitter).collect();
-        let User: User = createSingleItem(colValues);
-        itemMapper.insert(item.id, item);
+        let user: User = createSingleUser(colValues);
+        user_mapper.insert(user.id, user);
         count += 1;
     }
-    return itemMapper;
+    return user_mapper;
 }
 
 fn createSingleItem(columnValues: Vec<&str>) -> Item {
