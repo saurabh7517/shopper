@@ -5,6 +5,7 @@ use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
+use std::process::Command;
 
 enum PojoType {
     User,
@@ -25,7 +26,7 @@ pub trait UserBehaviour {
 
 pub trait CommonBehaviour {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
-    fn eq(&self, other: &Self) -> bool;
+    // fn eq(&self, other: &Self) -> bool;
 }
 
 
@@ -51,9 +52,9 @@ impl CommonBehaviour for User {
         );
     }
 
-    fn eq(&self, other: &Self) -> bool {
-        return self.name.eq(&other.name);
-    }
+    // fn eq(&self, other: &Self) -> bool {
+    //     return self.name.eq(&other.name);
+    // }
 }
 
 struct Item {
@@ -87,9 +88,9 @@ impl CommonBehaviour for Item {
         );
     }
 
-    fn eq(&self, other: &Self) -> bool {
-        return self.name.eq(&other.name);
-    }
+    // fn eq(&self, other: &Self) -> bool {
+    //     return self.name.eq(&other.name);
+    // }
 }
 
 fn main() {
@@ -102,8 +103,8 @@ fn main() {
     path_list.push(user_data_path);
 
     let mut path_name : String = String::new();
-    let item_mapper : HashMap<i64, Item>;
-    let user_mapper : HashMap<i64, User>;
+    let mut item_mapper : HashMap<i64, Box<dyn CommonBehaviour>>;
+    let mut user_mapper : HashMap<i64, Box<dyn CommonBehaviour>>;
     
     
     //Creating a loop to store all files in memory
@@ -122,10 +123,11 @@ fn main() {
                 print!("Strings read from file :: {} :: is {}\n", path_name, datasize);
                 let lines: Vec<&str> = line_splitter(&mut s, "\n");
                 if path_name.contains("item_data") {
-                    item_mapper = create_items(&lines);
+                    // item_mapper = create_items(&lines);
+                    item_mapper = create_generic_objects(lines, PojoType::Item);
                 }
                 else if path_name.contains("user_data") {
-                    user_mapper = create_users(&lines);
+                    user_mapper = create_generic_objects(lines,PojoType::User);
                 }
 
                 
@@ -163,6 +165,60 @@ fn line_splitter<'a>(data: &'a mut String, split_char: &'a str) -> Vec<&'a str> 
 //     }
 
 // }
+
+fn create_generic_objects(lines: Vec<&str>, objectType: PojoType) -> HashMap<i64,Box<dyn CommonBehaviour>> {
+    let column_splitter: &str = ",";
+    let mut col_values: Vec<&str> = Vec::new();
+    let mut count: i64 = 0;
+
+    match objectType {
+        PojoType::Item => {
+            let mut item_mapper = create_objects(lines,PojoType::Item);
+            return item_mapper; },
+        PojoType::User => {
+            let mut user_mapper = create_objects(lines, PojoType::User);
+            return user_mapper;
+        },
+        
+    }
+
+}
+
+fn create_objects (lines: Vec<&str>, objectType: PojoType) -> HashMap<i64,Box<dyn CommonBehaviour>> {
+    let column_splitter: &str = ",";
+    let mut generic_mapper: HashMap<i64,Box<dyn CommonBehaviour>>;
+
+    let mut item_mapper: HashMap<i64, Box<dyn CommonBehaviour>> = HashMap::new();
+    let mut user_mapper : HashMap<i64, Box<dyn CommonBehaviour>> = HashMap::new();
+
+    let mut col_values: Vec<&str> = Vec::new();
+    let mut count: i64 = 0;
+    for x in lines.iter() {
+        if count == 0 {
+            count += 1;
+            continue;
+        }
+        col_values = x.split(column_splitter).collect();
+        match objectType {
+            PojoType::Item => {
+                let item: Item = create_single_item(col_values);
+                item_mapper.insert(item.id, Box::new(item));
+            },
+            PojoType::User => {
+                let user: User = create_single_user(col_values);
+                user_mapper.insert(user.id, Box::new(user));
+            },
+        }
+
+        count += 1;
+    }
+
+    match objectType {
+        PojoType::Item => return item_mapper,
+        PojoType::User => return user_mapper,        
+    }
+    
+}
 
 fn create_items(lines: &Vec<&str>) -> HashMap<i64, Item> {
     let column_splitter: &str = ",";
@@ -220,7 +276,8 @@ fn create_single_user(column_values: Vec<&str>) -> User {
     // email: String,
     // gender: String,
     // dob: String,
-    let message = fmt.format!("rror in record number :: {}", column_values[0]);
+    // let message = fmt.format!("rror in record number :: {}", column_values[0]);
+    let message = "Some message";
     let id : i64 = column_values[0].parse().expect(message);
     let name : String = column_values[1].parse().expect(message);
     let email : String = column_values[2].parse().expect(message);
