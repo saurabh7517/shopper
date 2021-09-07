@@ -1,9 +1,11 @@
+use std::any::Any;
 use std::cmp::{PartialEq};
 use std::collections::HashMap;
 use std::fmt;
 
 use std::fs::File;
 use std::io::prelude::*;
+use std::ops::Deref;
 use std::path::Path;
 use std::process::Command;
 
@@ -12,7 +14,7 @@ enum PojoType {
     Item,
 }
 
-struct User {
+struct User<C:CommonBehaviour> {
     id: i64,
     name: String,
     email: String,
@@ -31,7 +33,7 @@ pub trait CommonBehaviour {
 
 
 
-impl UserBehaviour for User {
+impl<C: CommonBehaviour> UserBehaviour for User<C> {
     fn new(id: i64, name: String, email: String, gender: String, dob: String) -> Self {
         return User {
             id: id,
@@ -43,7 +45,27 @@ impl UserBehaviour for User {
     }
 }
 
-impl CommonBehaviour for User {
+
+
+
+
+impl<C: CommonBehaviour> Deref for User<C>{
+    
+    fn deref(&self) -> &Self {
+        &self
+    } 
+}
+
+
+impl Deref for Item{
+    type Target  = Item;
+    
+    fn deref(&self) -> &Self {
+        &self
+    } 
+}
+
+impl<C: CommonBehaviour> CommonBehaviour for User<C> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         return write!(
             f,
@@ -51,11 +73,9 @@ impl CommonBehaviour for User {
             self.id, self.name, self.email, self.gender, self.dob
         );
     }
-
-    // fn eq(&self, other: &Self) -> bool {
-    //     return self.name.eq(&other.name);
-    // }
 }
+
+
 
 struct Item {
     id: i64,
@@ -88,9 +108,15 @@ impl CommonBehaviour for Item {
         );
     }
 
+
     // fn eq(&self, other: &Self) -> bool {
     //     return self.name.eq(&other.name);
     // }
+}
+impl<C: CommonBehaviour> User<C>{
+    fn getUser(&self) -> &C {
+        return &self;
+    }
 }
 
 fn main() {
@@ -128,16 +154,27 @@ fn main() {
                 }
                 else if path_name.contains("user_data") {
                     user_mapper = create_generic_objects(lines,PojoType::User);
-                }
-
-                
+                }                
             }
             Err(why) => panic!("couldn't read {}: {}", path_name, why),
         }
         path_name.clear();
     }
-    let display = user_data_path.display();
-    // Open the path in read-only mode, returns `io::Result<File>`
+
+    let extracted_user: &User; 
+
+
+    match user_mapper.get(&2) {
+        Some (V) => {
+            let sometrait = V.deref();
+            let extracted_user = sometrait;
+        },
+        None => ()
+        
+    }
+
+    println!("User data in user id 3 is :: {}",extracted_user.id);
+
 
 
 
@@ -165,33 +202,15 @@ fn line_splitter<'a>(data: &'a mut String, split_char: &'a str) -> Vec<&'a str> 
 //     }
 
 // }
-
+// Function splitting column by "," and fetching valuues
 fn create_generic_objects(lines: Vec<&str>, objectType: PojoType) -> HashMap<i64,Box<dyn CommonBehaviour>> {
     let column_splitter: &str = ",";
     let mut col_values: Vec<&str> = Vec::new();
-    let mut count: i64 = 0;
-
-    match objectType {
-        PojoType::Item => {
-            let mut item_mapper = create_objects(lines,PojoType::Item);
-            return item_mapper; },
-        PojoType::User => {
-            let mut user_mapper = create_objects(lines, PojoType::User);
-            return user_mapper;
-        },
-        
-    }
-
-}
-
-fn create_objects (lines: Vec<&str>, objectType: PojoType) -> HashMap<i64,Box<dyn CommonBehaviour>> {
-    let column_splitter: &str = ",";
-    let mut generic_mapper: HashMap<i64,Box<dyn CommonBehaviour>>;
 
     let mut item_mapper: HashMap<i64, Box<dyn CommonBehaviour>> = HashMap::new();
     let mut user_mapper : HashMap<i64, Box<dyn CommonBehaviour>> = HashMap::new();
 
-    let mut col_values: Vec<&str> = Vec::new();
+
     let mut count: i64 = 0;
     for x in lines.iter() {
         if count == 0 {
@@ -217,8 +236,41 @@ fn create_objects (lines: Vec<&str>, objectType: PojoType) -> HashMap<i64,Box<dy
         PojoType::Item => return item_mapper,
         PojoType::User => return user_mapper,        
     }
-    
+
+
 }
+
+// fn create_objects (lines: Vec<&str>, objectType: PojoType) -> HashMap<i64,Box<dyn CommonBehaviour>> {
+//     let column_splitter: &str = ",";
+
+// let mut item_mapper: HashMap<i64, Box<dyn CommonBehaviour>> = HashMap::new();
+// let mut user_mapper : HashMap<i64, Box<dyn CommonBehaviour>> = HashMap::new();
+
+    
+//     let mut count: i64 = 0;
+//     for x in lines.iter() {
+//         if count == 0 {
+//             count += 1;
+//             continue;
+//         }
+//         col_values = x.split(column_splitter).collect();
+//         match objectType {
+//             PojoType::Item => {
+//                 let item: Item = create_single_item(col_values);
+//                 item_mapper.insert(item.id, Box::new(item));
+//             },
+//             PojoType::User => {
+//                 let user: User = create_single_user(col_values);
+//                 user_mapper.insert(user.id, Box::new(user));
+//             },
+//         }
+
+//         count += 1;
+//     }
+
+
+    
+// }
 
 fn create_items(lines: &Vec<&str>) -> HashMap<i64, Item> {
     let column_splitter: &str = ",";
@@ -240,7 +292,7 @@ fn create_items(lines: &Vec<&str>) -> HashMap<i64, Item> {
 
 fn create_users(lines: &Vec<&str>) -> HashMap<i64, User> {
     let column_splitter: &str = ",";
-    let mut user_mapper: HashMap<i64, User> = HashMap::new();
+    let mut user_mapper: HashMap<i64, User<CommonBehaviour>> = HashMap::new();
     let mut col_values: Vec<&str> = Vec::new();
     let mut count: i64 = 0;
     for x in lines.iter() {
@@ -270,7 +322,7 @@ fn create_single_item(col_values: Vec<&str>) -> Item {
     return Item::new(id, name, size, price);
 }
 
-fn create_single_user(column_values: Vec<&str>) -> User {
+fn create_single_user(column_values: Vec<&str>) -> User<CommonBehaviour> {
     // id: i64,
     // name: String,
     // email: String,
